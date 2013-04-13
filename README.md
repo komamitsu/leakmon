@@ -38,10 +38,10 @@ If you want to monitor the objects of specific class, then include Leakmon into 
       sleep 0.5
     end
 
-    Leakmon.list.each{|rec| p rec}  # Array of the remaining objects (not garbage collected).
+    Leakmon.list_remaining_objects.each{|rec| p rec}  # Array of the remaining objects (not garbage collected).
 
     # You can filter the objects by :time keyword.
-    Leakmon.list(:time => 8).each{|rec| p rec}  # Only older than 8 sec.
+    Leakmon.list_remaining_objects(:time => 8).each{|rec| p rec}  # Only older than 8 sec.
 
 Then "i am released." will be printed when some Foo instances are collected. At the last code, the remaining objects will be dumped.
 
