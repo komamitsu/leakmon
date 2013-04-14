@@ -44,11 +44,11 @@ describe Leakmon do
 
     describe "tcp_server" do
       require 'socket'
-
       port = 9876
+
       Leakmon.tcp_server('0.0.0.0', port)
 
-      sleep 0.3 # can use IO.select?
+      sleep 0.3
       client = TCPSocket.new('127.0.0.1', port)
 
       def test_list(client, cmd, expected_obj_count)
@@ -79,6 +79,8 @@ describe Leakmon do
 
       context 'quit' do
         it "disconnect the connection" do
+          client.puts 'quit'
+          client.gets.should be_nil
         end
       end
     end

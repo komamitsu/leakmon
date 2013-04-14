@@ -55,9 +55,10 @@ module Leakmon
       require 'socket'
 
       Thread.new do
-        s = TCPServer.new(host, port)
+        @leakmon_tcp_server = TCPServer.new(host, port)
+        @leakmon_tcp_server.setsockopt(:SOCKET, :REUSEADDR, true)
         loop do
-          Thread.new(s.accept) do |c|
+          Thread.new(@leakmon_tcp_server.accept) do |c|
             while command_line = c.gets.strip
               next if command_line.empty?
 
