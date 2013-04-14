@@ -67,7 +67,7 @@ module Leakmon
               when 'list'
                 cond = args.empty? ? {} : {:time => Integer(args[0])}
                 c.puts "now: #{Time.now}"
-                Leakmon.list(cond).each do |obj|
+                Leakmon.list_remaining_objects(cond).each do |obj|
                   c.puts(obj.inspect)
                 end
               when 'quit'

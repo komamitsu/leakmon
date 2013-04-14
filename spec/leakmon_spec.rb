@@ -2,32 +2,26 @@ require 'spec_helper'
 
 describe Leakmon do
   context "when a class including Leakmon has instantiated some objects finalized or not" do
-    let :total_obj_num do 
-      10 
+    class Foo
+      include Leakmon
     end
 
-    let :gc_obj_num do
-      4
+    total_obj_num = 10 
+    gc_obj_num = 4
+
+    $output = StringIO.new
+    Foo.release_hook("$output.puts 'hoge'")
+
+    foos = []
+    total_obj_num.times do |i|
+      sleep 1 if i == total_obj_num - 1
+      foos << Foo.new
     end
 
-    before do
-      class Foo
-        include Leakmon
-      end
-
-      $output = StringIO.new
-      Foo.release_hook("$output.puts 'hoge'")
-
-      foos = []
-      total_obj_num.times do
-        foos << Foo.new
-      end
-
-      gc_obj_num.times do |i|
-        foos[i] = nil
-      end
-      GC.start
+    gc_obj_num.times do |i|
+      foos[i] = nil
     end
+    GC.start
 
     describe "release_fook" do
       it "the block is evaluated whenever the object is finalized" do
@@ -54,16 +48,32 @@ describe Leakmon do
       port = 9876
       Leakmon.tcp_server('0.0.0.0', port)
 
-      sleep 0.5 # can use IO.select?
+      sleep 0.3 # can use IO.select?
       client = TCPSocket.new('127.0.0.1', port)
+
+      def test_list(client, cmd, expected_obj_count)
+        count = 0
+        t = Thread.new do
+          client.puts cmd
+          client.each_line do |l|
+            l.should =~ (count.zero? ? %r|\Anow: | : %r|\A\["Foo__|)
+            count += 1
+          end
+        end
+        sleep 0.2
+        Thread.kill t
+        count.should == 1 + expected_obj_count
+      end
 
       context 'list' do
         it "returns remaining objects as response" do
+          test_list(client, 'list', total_obj_num - gc_obj_num)
         end
       end
 
       context 'list (sec)' do
         it "returns remaining objects survive the specified seconds as response" do
+          test_list(client, 'list 1', total_obj_num - gc_obj_num - 1)
         end
       end
 
