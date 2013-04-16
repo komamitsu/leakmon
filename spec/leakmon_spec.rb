@@ -118,8 +118,8 @@ describe Leakmon do
         end
       end
 
-      user_count.should == 2
-      premium_user_count.should == 1
+      user_count.should eq(2)
+      premium_user_count.should eq(1)
     end
   end
 end
