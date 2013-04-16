@@ -14,5 +14,5 @@ Gem::Specification.new do |gem|
   gem.name          = "leakmon"
   gem.require_paths = ["lib"]
   gem.version       = Leakmon::VERSION
-  gem.add_dependency "rspec", "~> 2.13.0"
+  gem.add_development_dependency "rspec", "~> 2.13.0"
 end
