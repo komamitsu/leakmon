@@ -85,5 +85,42 @@ describe Leakmon do
       end
     end
   end
+
+  context 'include_with_subclasses' do
+    it do
+      Leakmon.clear_remaining_objects
+
+      class User
+        attr_accessor :name, :created_at
+        def initialize(name)
+          @name = name
+          @created_at = Time.now
+        end
+      end
+
+      class PremiumUser < User
+      end
+
+      Leakmon.include_with_subclasses(Object)
+
+      users = []
+      users << User.new('komamitsu')
+      users << User.new('hogehoge')
+      users << PremiumUser.new('hogehoge')
+
+      user_count = 0
+      premium_user_count = 0
+      Leakmon.list_remaining_objects.each do |obj_info|
+        case obj_info.first
+        when /\AUser__/ then user_count += 1
+        when /\APremiumUser__/ then premium_user_count += 1
+        else raise "An unexpected remaining object: #{obj_info.first}"
+        end
+      end
+
+      user_count.should == 2
+      premium_user_count.should == 1
+    end
+  end
 end
 

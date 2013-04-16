@@ -1,10 +1,19 @@
 require "leakmon/version"
 
 module Leakmon
+  class LeakmonString < String; end
+
+  class LeakmonArray < Array; end
+
+  class LeakmonHash < Hash; end
+
+  class LeakmonTime < Time; end
+
+  class LeakmonMutex < Mutex; end
+
   class << self
-    def include_in_subclasses(klass = Object)
+    def include_with_subclasses(klass = Object)
       ObjectSpace.each_object(class << klass; self; end) do |cls|
-        next if cls.ancestors.include?(Exception)
         next if out_of_scope?(cls)
         cls.__send__(:include, Leakmon)
       end
@@ -17,7 +26,7 @@ module Leakmon
 
           case cond_key
           when :time
-            now = Time.now
+            now = LeakmonTime.now
             new_objs = objs.select do |obj_k, obj_v|
               obj_v[:time] < now - cond[cond_key]
             end
@@ -30,6 +39,12 @@ module Leakmon
       end
     end
 
+    def clear_remaining_objects
+      leakmon_mutex.synchronize do
+        @remaining_objects = LeakmonHash.new
+      end
+    end
+
     def included(base)
       class << base
         @leakmon_included ||= false
@@ -39,11 +54,11 @@ module Leakmon
 
       return unless base.private_methods.include?(:initialize)
       begin
-        base.__send__(:alias_method, :initialize_without_leakmon_pre, :initialize)
+        base.__send__(:alias_method, :initialize_without_leakmon, :initialize)
       rescue NameError
         return
       end
-      base.__send__(:alias_method, :initialize, :initialize_with_leakmon_pre)
+      base.__send__(:alias_method, :initialize, :initialize_with_leakmon)
 
       def base.release_hook(proc_str)
         @@leakmon_release_hook = proc_str
@@ -110,16 +125,16 @@ module Leakmon
 
     private
     def leakmon_mutex
-      @leakmon_mutex ||= Mutex.new
+      @leakmon_mutex ||= LeakmonMutex.new
       @leakmon_mutex
     end
 
     def out_of_scope?(klass)
-      [Leakmon, Time, Mutex].include?(klass)
+      [Leakmon, LeakmonTime, LeakmonMutex, LeakmonString, LeakmonArray].include?(klass)
     end
 
     def remaining_objects
-      @remaining_objects ||= {}
+      @remaining_objects ||= LeakmonHash.new
       @remaining_objects
     end
   end
@@ -137,9 +152,11 @@ module Leakmon
     # ObjectSpace.define_finalizer(self, proc {|id| puts "hoge #{id}"})
   end
 
-  def initialize_with_leakmon_pre(*args, &blk)
-    return if caller.detect{|c| c =~ /in `initialize(?:_with_leakmon_pre)?'\z/}
-    initialize_without_leakmon_pre(*args, &blk)
+  def initialize_with_leakmon(*args, &blk)
+    return if caller.detect do |c|
+      c =~ /in `initialize_with_leakmon'/ || c =~ /in `include_with_subclasses'/
+    end
+    initialize_without_leakmon(*args, &blk)
     register_leakmon(caller)
   end
 end
